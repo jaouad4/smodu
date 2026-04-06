@@ -1,176 +1,164 @@
-import { ArrowLeftOutlined, ArrowRightOutlined, CheckCircleFilled, CloseCircleFilled } from '@ant-design/icons';
-import { Alert, Button, Card, Checkbox, Progress, Radio, Result, Skeleton, Space, Typography } from 'antd';
 import { useState } from 'react';
-import { useParams } from 'react-router-dom';
-import { useQuiz, useSubmitQuiz } from '@/hooks/useEvaluations';
-import type { SubmitAnswerPayload } from '@/types';
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { useParams, useNavigate } from 'react-router-dom';
+import { evaluationsApi } from '../../api/evaluations';
+import type { QuizResult } from '../../types';
 
-const { Title, Text } = Typography;
-
-const QuizPage = () => {
+export default function QuizPage() {
   const { quizId } = useParams<{ quizId: string }>();
-  const { data: quiz, isLoading } = useQuiz(Number(quizId));
-  const { mutate: submit, isPending, data: result } = useSubmitQuiz(Number(quizId));
-
-  const [currentIndex, setCurrentIndex] = useState(0);
+  const navigate = useNavigate();
   const [answers, setAnswers] = useState<Record<number, number[]>>({});
+  const [textAnswers, setTextAnswers] = useState<Record<number, string>>({});
+  const [result, setResult] = useState<QuizResult | null>(null);
 
-  if (isLoading) return <Skeleton active paragraph={{ rows: 8 }} />;
-  if (!quiz) return null;
+  const { data: quiz, isLoading } = useQuery({
+    queryKey: ['quiz', quizId],
+    queryFn: () => evaluationsApi.getQuiz(Number(quizId)),
+    enabled: !!quizId,
+  });
 
-  // ─── Résultat final ────────────────────────────────────
-  if (result) {
-    const passed = (result as any).passed as boolean;
+  const { mutate: submit, isPending } = useMutation({
+    mutationFn: (payload: Parameters<typeof evaluationsApi.submitQuiz>[1]) =>
+      evaluationsApi.submitQuiz(Number(quizId), payload),
+    onSuccess: (data) => setResult(data),
+  });
+
+  const handleToggleChoice = (questionId: number, choiceId: number, isMulti: boolean) => {
+    setAnswers(prev => {
+      const current = prev[questionId] ?? [];
+      if (isMulti) {
+        return {
+          ...prev,
+          [questionId]: current.includes(choiceId)
+            ? current.filter(id => id !== choiceId)
+            : [...current, choiceId],
+        };
+      }
+      return { ...prev, [questionId]: [choiceId] };
+    });
+  };
+
+  const handleSubmit = () => {
+    if (!quiz) return;
+    const payload = {
+      answers: quiz.questions.map(q => ({
+        question_id: q.id,
+        ...(q.question_type === 'OPEN'
+          ? { text_answer: textAnswers[q.id] ?? '' }
+          : { choice_ids: answers[q.id] ?? [] }),
+      })),
+    };
+    submit(payload);
+  };
+
+  if (isLoading) {
     return (
-      <div style={{ maxWidth: 600, margin: '0 auto' }}>
-        <Result
-          icon={passed
-            ? <CheckCircleFilled style={{ color: '#437a22' }} />
-            : <CloseCircleFilled style={{ color: '#a12c7b' }} />
-          }
-          title={passed ? '🎉 Quiz réussi !' : 'Quiz non validé'}
-          subTitle={`Score : ${(result as any).score}% — Seuil requis : ${quiz.pass_threshold}%`}
-          status={passed ? 'success' : 'error'}
-          extra={[
-            <Button type="primary" key="back" onClick={() => history.back()}>
-              Retour
-            </Button>,
-          ]}
-        />
-        {(result as any).feedback && (
-          <Card title="Feedback détaillé" style={{ marginTop: 16 }}>
-            {((result as any).feedback as { question: string; correct: boolean; explanation: string }[]).map((fb, i) => (
-              <Alert
-                key={i}
-                type={fb.correct ? 'success' : 'error'}
-                message={fb.question}
-                description={fb.explanation}
-                style={{ marginBottom: 8 }}
-                showIcon
-              />
-            ))}
-          </Card>
-        )}
+      <div className="p-8 space-y-4 max-w-2xl mx-auto">
+        {[1, 2, 3].map(i => <div key={i} className="h-24 rounded-xl bg-[#f3f0ec] animate-pulse" />)}
       </div>
     );
   }
 
-  // ─── Quiz en cours ────────────────────────────────────
-  const question = quiz.questions[currentIndex];
-  const isLast = currentIndex === quiz.questions.length - 1;
-  const selectedChoices = answers[question.id] ?? [];
-  const progressPercent = Math.round(((currentIndex + 1) / quiz.questions.length) * 100);
-
-  const handleChoiceChange = (choiceId: number, multi = false) => {
-    if (multi) {
-      setAnswers(prev => {
-        const current = prev[question.id] ?? [];
-        return {
-          ...prev,
-          [question.id]: current.includes(choiceId)
-            ? current.filter(id => id !== choiceId)
-            : [...current, choiceId],
-        };
-      });
-    } else {
-      setAnswers(prev => ({ ...prev, [question.id]: [choiceId] }));
-    }
-  };
-
-  const handleSubmit = () => {
-    const payload: SubmitAnswerPayload[] = Object.entries(answers).map(
-      ([questionId, choiceIds]) => ({ question_id: Number(questionId), choice_ids: choiceIds })
+  if (!quiz) {
+    return (
+      <div className="p-8 text-center">
+        <p className="text-[#a12c7b]">Quiz introuvable.</p>
+        <button onClick={() => navigate(-1)} className="mt-3 text-sm text-[#01696f] underline">Retour</button>
+      </div>
     );
-    submit(payload);
-  };
+  }
 
-  return (
-    <div style={{ maxWidth: 680, margin: '0 auto' }}>
-      <Title level={2}>{quiz.title}</Title>
-
-      <div style={{ marginBottom: 24 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-          <Text type="secondary">Question {currentIndex + 1} / {quiz.questions.length}</Text>
-          <Text type="secondary">Seuil : {quiz.pass_threshold}%</Text>
+  // ── Résultat ────────────────────────────────────────────────────
+  if (result) {
+    return (
+      <div className="p-8 max-w-lg mx-auto text-center space-y-6 mt-8">
+        <div className={`w-20 h-20 rounded-full flex items-center justify-center text-3xl mx-auto ${
+          result.passed ? 'bg-[#d4dfcc] text-[#437a22]' : 'bg-[#e0ced7] text-[#a12c7b]'
+        }`}>
+          {result.passed ? '✓' : '✕'}
         </div>
-        <Progress percent={progressPercent} strokeColor="#01696f" showInfo={false} />
-      </div>
-
-      <Card>
-        <Title level={4} style={{ marginBottom: 24 }}>{question.text}</Title>
-
-        <Space direction="vertical" style={{ width: '100%' }}>
-          {question.question_type === 'MCQ' ? (
-            question.choices.map(choice => (
-              <Card
-                key={choice.id}
-                size="small"
-                hoverable
-                style={{
-                  borderColor: selectedChoices.includes(choice.id) ? '#01696f' : undefined,
-                  background: selectedChoices.includes(choice.id) ? '#cedcd8' : undefined,
-                  cursor: 'pointer',
-                }}
-                onClick={() => handleChoiceChange(choice.id, true)}
-              >
-                <Checkbox checked={selectedChoices.includes(choice.id)}>
-                  {choice.text}
-                </Checkbox>
-              </Card>
-            ))
-          ) : (
-            question.choices.map(choice => (
-              <Card
-                key={choice.id}
-                size="small"
-                hoverable
-                style={{
-                  borderColor: selectedChoices.includes(choice.id) ? '#01696f' : undefined,
-                  background: selectedChoices.includes(choice.id) ? '#cedcd8' : undefined,
-                  cursor: 'pointer',
-                }}
-                onClick={() => handleChoiceChange(choice.id)}
-              >
-                <Radio checked={selectedChoices.includes(choice.id)}>
-                  {choice.text}
-                </Radio>
-              </Card>
-            ))
-          )}
-        </Space>
-      </Card>
-
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 24 }}>
-        <Button
-          icon={<ArrowLeftOutlined />}
-          disabled={currentIndex === 0}
-          onClick={() => setCurrentIndex(i => i - 1)}
-        >
-          Précédent
-        </Button>
-        {isLast ? (
-          <Button
-            type="primary"
-            loading={isPending}
-            disabled={selectedChoices.length === 0}
-            onClick={handleSubmit}
-          >
-            Soumettre le quiz
-          </Button>
+        <div>
+          <h1 className="text-2xl font-semibold text-[#28251d]">
+            {result.passed ? 'Quiz réussi !' : 'Quiz non réussi'}
+          </h1>
+          <p className="text-[#7a7974] mt-2">
+            Score : <span className="font-semibold text-[#28251d]">{result.score}%</span>
+            {' '}— {result.correct_answers}/{result.total_questions} bonnes réponses
+          </p>
+        </div>
+        {result.passed ? (
+          <p className="text-sm text-[#437a22]">Seuil de réussite atteint ({quiz.pass_threshold}%). Félicitations !</p>
         ) : (
-          <Button
-            type="primary"
-            icon={<ArrowRightOutlined />}
-            iconPosition="end"
-            disabled={selectedChoices.length === 0}
-            onClick={() => setCurrentIndex(i => i + 1)}
-          >
-            Suivant
-          </Button>
+          <p className="text-sm text-[#a12c7b]">Seuil requis : {quiz.pass_threshold}%. Vous pouvez retenter.</p>
         )}
+        <div className="flex gap-3 justify-center">
+          <button onClick={() => navigate(-1)} className="text-sm border border-[#dcd9d5] px-4 py-2 rounded-lg hover:bg-[#f3f0ec] transition-colors">
+            Retour
+          </button>
+          {!result.passed && (
+            <button onClick={() => setResult(null)} className="text-sm bg-[#01696f] text-white px-4 py-2 rounded-lg hover:bg-[#0c4e54] transition-colors">
+              Réessayer
+            </button>
+          )}
+        </div>
       </div>
+    );
+  }
+
+  // ── Quiz ────────────────────────────────────────────────────────
+  return (
+    <div className="p-8 max-w-2xl mx-auto space-y-8">
+      <div>
+        <h1 className="text-2xl font-semibold text-[#28251d]">{quiz.title}</h1>
+        <p className="text-[#7a7974] mt-1 text-sm">
+          {quiz.questions.length} questions · Seuil de réussite : {quiz.pass_threshold}%
+        </p>
+      </div>
+
+      {quiz.questions.map((q, idx) => (
+        <div key={q.id} className="bg-[#f9f8f5] border border-[#dcd9d5] rounded-xl p-5 space-y-3">
+          <p className="text-sm font-semibold text-[#28251d]">
+            {idx + 1}. {q.text}
+          </p>
+
+          {q.question_type === 'OPEN' ? (
+            <textarea
+              rows={3}
+              className="w-full text-sm border border-[#dcd9d5] rounded-lg px-3 py-2 bg-white focus:outline-none focus:border-[#01696f] resize-none"
+              placeholder="Votre réponse..."
+              value={textAnswers[q.id] ?? ''}
+              onChange={e => setTextAnswers(prev => ({ ...prev, [q.id]: e.target.value }))}
+            />
+          ) : (
+            <div className="space-y-2">
+              {q.choices.map(choice => {
+                const selected = (answers[q.id] ?? []).includes(choice.id);
+                return (
+                  <button
+                    key={choice.id}
+                    onClick={() => handleToggleChoice(q.id, choice.id, q.question_type === 'MCQ')}
+                    className={`w-full text-left text-sm px-4 py-2.5 rounded-lg border transition-colors ${
+                      selected
+                        ? 'bg-[#cedcd8] border-[#01696f] text-[#0c4e54]'
+                        : 'bg-white border-[#dcd9d5] text-[#28251d] hover:border-[#01696f]'
+                    }`}
+                  >
+                    {choice.text}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      ))}
+
+      <button
+        onClick={handleSubmit}
+        disabled={isPending}
+        className="w-full bg-[#01696f] text-white py-3 rounded-xl font-medium hover:bg-[#0c4e54] transition-colors disabled:opacity-50"
+      >
+        {isPending ? 'Envoi...' : 'Soumettre le quiz'}
+      </button>
     </div>
   );
-};
-
-export default QuizPage;
+}

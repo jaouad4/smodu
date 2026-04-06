@@ -1,26 +1,26 @@
-// Onboarding
-export type StepType = 'document_read' | 'video_watch' | 'task_complete' | 'form_fill';
+// ─── ONBOARDING ───────────────────────────────────────
+export type StepType = 'document_read' | 'task_complete' | 'video_watch' | 'form_fill';
 
 export interface OnboardingStep {
   id: number;
   title: string;
   description: string;
   step_type: StepType;
+  order: number;
   is_mandatory: boolean;
   is_completed: boolean;
-  document_url?: string;
+  document_url: string | null;
 }
 
 export interface OnboardingJourney {
-  id: number;
   template_title: string;
-  steps: OnboardingStep[];
-  completed_steps: number;
   total_steps: number;
+  completed_steps: number;
   completion_percentage: number;
+  steps: OnboardingStep[];
 }
 
-// Formation
+// ─── FORMATION ────────────────────────────────────────
 export type Level = 'DISCOVERY' | 'BEGINNER' | 'INTERMEDIATE' | 'AUTONOMOUS' | 'PROJECT_READY';
 export type LessonType = 'video' | 'pdf' | 'text' | 'exercise';
 
@@ -28,8 +28,10 @@ export interface Lesson {
   id: number;
   title: string;
   lesson_type: LessonType;
+  order: number;
   duration_minutes: number;
   is_completed: boolean;
+  content_url: string | null;
 }
 
 export interface Module {
@@ -37,9 +39,10 @@ export interface Module {
   title: string;
   description: string;
   level: Level;
+  order: number;
   is_locked: boolean;
   completion_percentage: number;
-  lessons?: Lesson[];
+  lessons: Lesson[];
 }
 
 export interface LearningPath {
@@ -47,53 +50,46 @@ export interface LearningPath {
   title: string;
   description: string;
   modules: Module[];
+  completion_percentage: number;
+  is_enrolled: boolean;
 }
 
-// Evaluations
-export type QuestionType = 'MCQ' | 'SINGLE_CHOICE';
+// ─── EVALUATIONS ──────────────────────────────────────
+export type QuestionType = 'MCQ' | 'TRUE_FALSE' | 'OPEN';
 
-export interface QuizChoice {
+export interface Choice {
   id: number;
   text: string;
 }
 
-export interface QuizQuestion {
+export interface Question {
   id: number;
   text: string;
   question_type: QuestionType;
-  choices: QuizChoice[];
+  choices: Choice[];
 }
 
 export interface Quiz {
   id: number;
   title: string;
-  questions: QuizQuestion[];
   pass_threshold: number;
-}
-
-export interface SubmitAnswerPayload {
-  question_id: number;
-  choice_ids: number[];
-}
-
-export interface QuizAttempt {
-  id: number;
-  quiz_id: number;
-  score: number;
-  attempted_at: string;
+  max_attempts: number;
+  questions: Question[];
 }
 
 export interface QuizResult {
-  passed: boolean;
+  attempt_id: number;
   score: number;
-  feedback?: Array<{
-    question: string;
-    correct: boolean;
-    explanation: string;
-  }>;
+  passed: boolean;
+  correct_answers: number;
+  total_questions: number;
 }
 
-// Competences
+export interface SubmitQuizPayload {
+  answers: { question_id: number; choice_ids?: number[]; text_answer?: string }[];
+}
+
+// ─── COMPÉTENCES ──────────────────────────────────────
 export interface SkillDomain {
   id: number;
   name: string;
@@ -109,10 +105,53 @@ export interface UserSkill {
   skill: Skill;
   level: Level;
   is_validated: boolean;
-  validated_by?: string;
+  validated_by: string | null;
 }
 
 export interface SkillMatrix {
-  id: number;
   skills: UserSkill[];
 }
+
+// ─── NOTIFICATIONS ────────────────────────────────────
+export interface Notification {
+  id: number;
+  notification_type: string;
+  message: string;
+  is_read: boolean;
+  created_at: string;
+}
+
+// ─── DASHBOARD ────────────────────────────────────────
+export type ValidationStatus =
+  | 'ONBOARDING' | 'TRAINING' | 'EVALUATION'
+  | 'CONSOLIDATION' | 'VALIDATED' | 'NOT_READY';
+
+export interface LearnerDashboard {
+  global_completion: number;
+  active_modules: Module[];
+  next_steps: OnboardingStep[];
+  validated_skills_count: number;
+  project_status: ValidationStatus;
+  recent_notifications: Notification[];
+}
+
+export interface ManagerDashboardKPI {
+  active_learners: number;
+  avg_completion_rate: number;
+  validated_learners: number;
+  delayed_learners: number;
+}
+
+export interface LearnerSummary {
+  user: { id: string; full_name: string; email: string; department: string };
+  completion_percentage: number;
+  quiz_avg_score: number;
+  project_status: ValidationStatus;
+  last_activity: string;
+}
+
+export interface ManagerDashboard {
+  kpis: ManagerDashboardKPI;
+  learners: LearnerSummary[];
+}
+

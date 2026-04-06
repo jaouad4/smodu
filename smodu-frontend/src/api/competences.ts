@@ -1,10 +1,9 @@
-import { axiosInstance } from './client';
-import type { SkillMatrix, SkillDomain } from '@/types';
+import apiClient from './client';
+import type { SkillMatrix } from '../types';
 
 export const competencesApi = {
   getMyMatrix: () =>
-    axiosInstance.get<SkillMatrix>('/competences/my-matrix/').then(r => r.data),
-
-  getDomains: () =>
-    axiosInstance.get<SkillDomain[]>('/competences/domains/').then(r => r.data),
+    apiClient.get<SkillMatrix>('/competences/my-matrix/').then(r => r.data),
+  requestValidation: (skillId: number) =>
+    apiClient.post(`/competences/skills/${skillId}/request-validation/`).then(r => r.data),
 };
