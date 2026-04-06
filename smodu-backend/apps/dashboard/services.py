@@ -91,90 +91,65 @@ def get_learner_dashboard(user: CustomUser) -> dict:
 def get_manager_dashboard() -> dict:
     """
     Vue globale pour le manager/admin.
-    Retourne des KPIs agrégés sur tous les apprenants.
+    Retourne des KPIs agrégés sur tous les apprenants + liste détaillée.
     """
-    now = timezone.now()
-    thirty_days_ago = now - timedelta(days=30)
+    learners_qs = CustomUser.objects.filter(
+        role=Role.LEARNER, is_active=True
+    ).select_related("profile")
 
-    # ── Utilisateurs ──────────────────────────────────────────────
-    learners = CustomUser.objects.filter(role=Role.LEARNER, is_active=True)
-    total_learners = learners.count()
-    new_learners_30d = learners.filter(date_joined__gte=thirty_days_ago).count()
+    learners_list = []
+    completion_rates = []
 
-    # ── Onboarding ───────────────────────────────────────────────
-    all_assignments = OnboardingAssignment.objects.all()
-    total_assignments = all_assignments.count()
-    completed_assignments = sum(1 for a in all_assignments if a.is_completed)
-    overdue_assignments = (
-        all_assignments.filter(
-            due_date__lt=now.date(),
+    for u in learners_qs:
+        # Compétences
+        acquisitions = CompetenceAcquisition.objects.filter(user=u)
+        total = acquisitions.count()
+        validated = sum(1 for a in acquisitions if a.is_validated)
+
+        completion_pct = round(validated / total * 100) if total else 0
+        completion_rates.append(completion_pct)
+
+        # Quiz
+        attempts = QuizAttempt.objects.filter(user=u, submitted_at__isnull=False)
+        avg_score_raw = attempts.aggregate(avg=Avg("score"))["avg"]
+        quiz_avg = round(float(avg_score_raw), 1) if avg_score_raw else 0
+
+        profile = getattr(u, "profile", None)
+        project_status = profile.project_status if profile else "ONBOARDING"
+
+        learners_list.append(
+            {
+                "user": {
+                    "id": str(u.id),
+                    "full_name": u.get_full_name(),
+                    "email": u.email,
+                    "department": u.department,
+                },
+                "completion_percentage": completion_pct,
+                "quiz_avg_score": quiz_avg,
+                "project_status": project_status,
+            }
         )
-        .exclude(id__in=[a.id for a in all_assignments if a.is_completed])
-        .count()
+
+    total_learners = len(learners_list)
+    validated_count = sum(
+        1 for l in learners_list if l["project_status"] == "VALIDATED"
     )
-
-    # ── Formation ─────────────────────────────────────────────────
-    all_enrollments = CourseEnrollment.objects.all()
-    total_enrollments = all_enrollments.count()
-    completed_enrollments = all_enrollments.filter(completed_at__isnull=False).count()
-
-    # ── Quiz ─────────────────────────────────────────────────────
-    submitted_attempts = QuizAttempt.objects.filter(submitted_at__isnull=False)
-    total_attempts = submitted_attempts.count()
-    passed_attempts = submitted_attempts.filter(is_passed=True).count()
-    avg_score = submitted_attempts.aggregate(avg=Avg("score"))["avg"]
-
-    # ── Activité récente (30 jours) ───────────────────────────────
-    recent_completions = StepCompletion.objects.filter(
-        completed_at__gte=thirty_days_ago
-    ).count()
-    recent_lesson_progress = LessonProgress.objects.filter(
-        last_accessed__gte=thirty_days_ago,
-        is_completed=True,
-    ).count()
-
-    # ── Top apprenants (par compétences validées) ─────────────────
-    top_learners = (
-        CompetenceAcquisition.objects.filter(
-            user__role=Role.LEARNER, user__is_active=True
-        )
-        .values("user__id", "user__first_name", "user__last_name", "user__email")
-        .annotate(validated_count=Count("id", filter=Q(level__gte=1)))
-        .order_by("-validated_count")[:5]
+    delayed_count = sum(1 for l in learners_list if l["project_status"] == "NOT_READY")
+    avg_completion = (
+        round(sum(completion_rates) / len(completion_rates), 1)
+        if completion_rates
+        else 0
     )
 
     return {
         "kpis": {
-            "total_learners": total_learners,
-            "new_learners_30d": new_learners_30d,
-            "total_onboarding_assignments": total_assignments,
-            "completed_onboarding": completed_assignments,
-            "onboarding_completion_rate": (
-                round(completed_assignments / total_assignments * 100, 1)
-                if total_assignments
-                else 0
-            ),
-            "overdue_onboarding": overdue_assignments,
-            "total_enrollments": total_enrollments,
-            "completed_enrollments": completed_enrollments,
-            "course_completion_rate": (
-                round(completed_enrollments / total_enrollments * 100, 1)
-                if total_enrollments
-                else 0
-            ),
-            "total_quiz_attempts": total_attempts,
-            "quiz_pass_rate": (
-                round(passed_attempts / total_attempts * 100, 1)
-                if total_attempts
-                else 0
-            ),
-            "avg_quiz_score": round(float(avg_score), 1) if avg_score else 0,
+            "active_learners": total_learners,
+            "avg_completion_rate": avg_completion,
+            "validated_learners": validated_count,
+            "delayed_learners": delayed_count,
         },
-        "activity_30d": {
-            "onboarding_steps_completed": recent_completions,
-            "lessons_completed": recent_lesson_progress,
-        },
-        "top_learners": list(top_learners),
+        "learners": learners_list,
     }
 
 

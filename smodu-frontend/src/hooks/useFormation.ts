@@ -10,7 +10,7 @@ export const useMyEnrollments = () =>
 export const useModule = (moduleId: number) =>
   useQuery({
     queryKey: ['formation', 'module', moduleId],
-    queryFn: () => formationApi.getModule(moduleId),
+    queryFn: () => formationApi.getModule(moduleId.toString()),
     enabled: !!moduleId,
   });
 

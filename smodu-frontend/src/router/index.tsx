@@ -12,21 +12,15 @@ import ModulePage from '../pages/formation/ModulePage';
 import QuizPage from '../pages/evaluations/QuizPage';
 import CompetencesPage from '../pages/competences/CompetencesPage';
 import NotFoundPage from '../pages/NotFoundPage';
+import ValidationPage from '../pages/validation/ValidationPage';
+import LearnerDetailPage from '../pages/learners/LearnerDetailPage';
+import AdminUsersPage from '../pages/admin/AdminUsersPage';
 
 function RequireAuth({ allowedRoles }: { allowedRoles?: UserRole[] }) {
   const { isAuthenticated, isLoading, hasRole } = useAuth();
-
-  if (isLoading) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-[#f7f6f2]">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-[#01696f] border-t-transparent" />
-      </div>
-    );
-  }
-
+  if (isLoading) return <div className="flex h-screen items-center justify-center bg-[#f7f6f2]"><div className="h-8 w-8 animate-spin rounded-full border-4 border-[#01696f] border-t-transparent" /></div>;
   if (!isAuthenticated) return <Navigate to="/login" replace />;
   if (allowedRoles && !hasRole(...allowedRoles)) return <Navigate to="/dashboard" replace />;
-
   return <Outlet />;
 }
 
@@ -57,21 +51,17 @@ export const router = createBrowserRouter([
           { path: '/formation/modules/:moduleId', element: <ModulePage /> },
           { path: '/evaluations/quiz/:quizId',    element: <QuizPage /> },
           { path: '/competences', element: <CompetencesPage /> },
-        ],
-      },
-    ],
-  },
-  {
-    element: <RequireAuth allowedRoles={['ADMIN', 'HR', 'MANAGER']} />,
-    children: [
-      {
-        element: <AppLayout />,
-        children: [
-          // Step 14 : ManagerDashboard, LearnersPage
+          {
+            element: <RequireAuth allowedRoles={['ADMIN', 'HR', 'MANAGER']} />,
+            children: [
+              { path: '/validation',          element: <ValidationPage /> },
+              { path: '/learners/:learnerId', element: <LearnerDetailPage /> },
+              { path: '/admin/users',         element: <AdminUsersPage /> },
+            ],
+          },
         ],
       },
     ],
   },
   { path: '*', element: <NotFoundPage /> },
 ]);
-

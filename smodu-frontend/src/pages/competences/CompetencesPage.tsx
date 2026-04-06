@@ -59,7 +59,7 @@ export default function CompetencesPage() {
     queryFn: competencesApi.getMyMatrix,
   });
 
-  const { mutate: requestValidation } = useMutation({
+  const { mutate: requestValidation } = useMutation<unknown, Error, string>({
     mutationFn: competencesApi.requestValidation,
     onSuccess: () => qc.invalidateQueries({ queryKey: ['competences', 'matrix'] }),
   });
