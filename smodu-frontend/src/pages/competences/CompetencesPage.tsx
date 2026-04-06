@@ -18,7 +18,7 @@ const LEVEL_COLORS: Record<string, string> = {
   PROJECT_READY: '#01696f',
 };
 
-function SkillRow({ skill, onRequest }: { skill: UserSkill; onRequest: (id: number) => void }) {
+function SkillRow({ skill, onRequest }: { skill: UserSkill; onRequest: (id: string) => void }) {
   const levelIdx = LEVEL_ORDER.indexOf(skill.level);
   const progress = ((levelIdx + 1) / LEVEL_ORDER.length) * 100;
   const color = LEVEL_COLORS[skill.level];

@@ -3,7 +3,7 @@ import type { SkillMatrix } from '../types';
 
 export const competencesApi = {
   getMyMatrix: () =>
-    apiClient.get<SkillMatrix>('/competences/my-matrix/').then(r => r.data),
-  requestValidation: (skillId: number) =>
-    apiClient.post(`/competences/skills/${skillId}/request-validation/`).then(r => r.data),
+    apiClient.get<SkillMatrix>('/competences/me/').then(r => r.data),
+  getMatrices: () =>
+    apiClient.get('/competences/matrices/').then(r => r.data),
 };

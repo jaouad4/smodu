@@ -2,7 +2,7 @@
 export type StepType = 'document_read' | 'task_complete' | 'video_watch' | 'form_fill';
 
 export interface OnboardingStep {
-  id: number;
+  id: string;
   title: string;
   description: string;
   step_type: StepType;
@@ -25,7 +25,7 @@ export type Level = 'DISCOVERY' | 'BEGINNER' | 'INTERMEDIATE' | 'AUTONOMOUS' | '
 export type LessonType = 'video' | 'pdf' | 'text' | 'exercise';
 
 export interface Lesson {
-  id: number;
+  id: string;
   title: string;
   lesson_type: LessonType;
   order: number;
@@ -35,7 +35,7 @@ export interface Lesson {
 }
 
 export interface Module {
-  id: number;
+  id: string;
   title: string;
   description: string;
   level: Level;
@@ -46,7 +46,7 @@ export interface Module {
 }
 
 export interface LearningPath {
-  id: number;
+  id: string;
   title: string;
   description: string;
   modules: Module[];
@@ -58,19 +58,19 @@ export interface LearningPath {
 export type QuestionType = 'MCQ' | 'TRUE_FALSE' | 'OPEN';
 
 export interface Choice {
-  id: number;
+  id: string;
   text: string;
 }
 
 export interface Question {
-  id: number;
+  id: string;
   text: string;
   question_type: QuestionType;
   choices: Choice[];
 }
 
 export interface Quiz {
-  id: number;
+  id: string;
   title: string;
   pass_threshold: number;
   max_attempts: number;
@@ -78,7 +78,7 @@ export interface Quiz {
 }
 
 export interface QuizResult {
-  attempt_id: number;
+  attempt_id: string;
   score: number;
   passed: boolean;
   correct_answers: number;
@@ -86,17 +86,17 @@ export interface QuizResult {
 }
 
 export interface SubmitQuizPayload {
-  answers: { question_id: number; choice_ids?: number[]; text_answer?: string }[];
+  answers: { question_id: string; choice_ids?: string[]; text_answer?: string }[];
 }
 
 // ─── COMPÉTENCES ──────────────────────────────────────
 export interface SkillDomain {
-  id: number;
+  id: string;
   name: string;
 }
 
 export interface Skill {
-  id: number;
+  id: string;
   name: string;
   domain: SkillDomain;
 }
@@ -114,7 +114,7 @@ export interface SkillMatrix {
 
 // ─── NOTIFICATIONS ────────────────────────────────────
 export interface Notification {
-  id: number;
+  id: string;
   notification_type: string;
   message: string;
   is_read: boolean;

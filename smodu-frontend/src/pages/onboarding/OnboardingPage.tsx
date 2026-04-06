@@ -9,7 +9,7 @@ const STEP_TYPE_LABELS: Record<string, string> = {
   form_fill:     '📝 Formulaire',
 };
 
-function StepCard({ step, onComplete }: { step: OnboardingStep; onComplete: (id: number) => void }) {
+function StepCard({ step, onComplete }: { step: OnboardingStep; onComplete: (id: string) => void }) {
   return (
     <div className={`border rounded-xl p-5 transition-all ${
       step.is_completed

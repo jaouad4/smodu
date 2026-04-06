@@ -7,23 +7,29 @@ import type { QuizResult } from '../../types';
 export default function QuizPage() {
   const { quizId } = useParams<{ quizId: string }>();
   const navigate = useNavigate();
-  const [answers, setAnswers] = useState<Record<number, number[]>>({});
-  const [textAnswers, setTextAnswers] = useState<Record<number, string>>({});
+  const [answers, setAnswers] = useState<Record<string, string[]>>({});
+  const [textAnswers, setTextAnswers] = useState<Record<string, string>>({});
   const [result, setResult] = useState<QuizResult | null>(null);
+  const [attemptId, setAttemptId] = useState<string | null>(null);
 
   const { data: quiz, isLoading } = useQuery({
     queryKey: ['quiz', quizId],
-    queryFn: () => evaluationsApi.getQuiz(Number(quizId)),
+    queryFn: () => evaluationsApi.getQuiz(quizId!),
     enabled: !!quizId,
   });
 
-  const { mutate: submit, isPending } = useMutation({
+  const { mutate: startQuiz, isPending: isStarting } = useMutation({
+    mutationFn: () => evaluationsApi.startQuiz(quizId!),
+    onSuccess: (data) => setAttemptId(data.attempt_id),
+  });
+
+  const { mutate: submit, isPending: isSubmitting } = useMutation({
     mutationFn: (payload: Parameters<typeof evaluationsApi.submitQuiz>[1]) =>
-      evaluationsApi.submitQuiz(Number(quizId), payload),
+      evaluationsApi.submitQuiz(attemptId!, payload),
     onSuccess: (data) => setResult(data),
   });
 
-  const handleToggleChoice = (questionId: number, choiceId: number, isMulti: boolean) => {
+  const handleToggleChoice = (questionId: string, choiceId: string, isMulti: boolean) => {
     setAnswers(prev => {
       const current = prev[questionId] ?? [];
       if (isMulti) {
@@ -36,6 +42,10 @@ export default function QuizPage() {
       }
       return { ...prev, [questionId]: [choiceId] };
     });
+  };
+
+  const handleStartQuiz = () => {
+    startQuiz();
   };
 
   const handleSubmit = () => {
@@ -68,6 +78,26 @@ export default function QuizPage() {
     );
   }
 
+  // ── Écran de démarrage ──────────────────────────────────────
+  if (!attemptId) {
+    return (
+      <div className="p-8 max-w-lg mx-auto space-y-6 mt-8">
+        <div className="text-center">
+          <p className="text-5xl mb-4">📝</p>
+          <h1 className="text-2xl font-semibold text-[#28251d]">{quiz.title}</h1>
+          <p className="text-[#7a7974] mt-3">{quiz.questions.length} questions · Seuil : {quiz.pass_threshold}%</p>
+        </div>
+        <button
+          onClick={handleStartQuiz}
+          disabled={isStarting}
+          className="w-full bg-[#01696f] text-white py-3 rounded-xl font-medium hover:bg-[#0c4e54] transition-colors disabled:opacity-50"
+        >
+          {isStarting ? 'Démarrage...' : 'Commencer le quiz'}
+        </button>
+      </div>
+    );
+  }
+
   // ── Résultat ────────────────────────────────────────────────────
   if (result) {
     return (
@@ -91,16 +121,9 @@ export default function QuizPage() {
         ) : (
           <p className="text-sm text-[#a12c7b]">Seuil requis : {quiz.pass_threshold}%. Vous pouvez retenter.</p>
         )}
-        <div className="flex gap-3 justify-center">
-          <button onClick={() => navigate(-1)} className="text-sm border border-[#dcd9d5] px-4 py-2 rounded-lg hover:bg-[#f3f0ec] transition-colors">
-            Retour
-          </button>
-          {!result.passed && (
-            <button onClick={() => setResult(null)} className="text-sm bg-[#01696f] text-white px-4 py-2 rounded-lg hover:bg-[#0c4e54] transition-colors">
-              Réessayer
-            </button>
-          )}
-        </div>
+        <button onClick={() => navigate(-1)} className="text-sm border border-[#dcd9d5] px-4 py-2 rounded-lg hover:bg-[#f3f0ec] transition-colors w-full">
+          Retour
+        </button>
       </div>
     );
   }
@@ -154,10 +177,10 @@ export default function QuizPage() {
 
       <button
         onClick={handleSubmit}
-        disabled={isPending}
+        disabled={isSubmitting}
         className="w-full bg-[#01696f] text-white py-3 rounded-xl font-medium hover:bg-[#0c4e54] transition-colors disabled:opacity-50"
       >
-        {isPending ? 'Envoi...' : 'Soumettre le quiz'}
+        {isSubmitting ? 'Envoi...' : 'Soumettre le quiz'}
       </button>
     </div>
   );

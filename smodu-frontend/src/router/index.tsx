@@ -15,6 +15,7 @@ import NotFoundPage from '../pages/NotFoundPage';
 
 function RequireAuth({ allowedRoles }: { allowedRoles?: UserRole[] }) {
   const { isAuthenticated, isLoading, hasRole } = useAuth();
+
   if (isLoading) {
     return (
       <div className="flex h-screen items-center justify-center bg-[#f7f6f2]">
@@ -22,8 +23,10 @@ function RequireAuth({ allowedRoles }: { allowedRoles?: UserRole[] }) {
       </div>
     );
   }
+
   if (!isAuthenticated) return <Navigate to="/login" replace />;
   if (allowedRoles && !hasRole(...allowedRoles)) return <Navigate to="/dashboard" replace />;
+
   return <Outlet />;
 }
 

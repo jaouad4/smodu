@@ -7,7 +7,7 @@ const LESSON_ICONS: Record<string, string> = {
   video: '🎬', pdf: '📄', text: '📖', exercise: '✏️',
 };
 
-function LessonRow({ lesson, onComplete }: { lesson: Lesson; onComplete: (id: number) => void }) {
+function LessonRow({ lesson, onComplete }: { lesson: Lesson; onComplete: (id: string) => void }) {
   return (
     <div className={`flex items-center gap-4 px-4 py-3 rounded-lg border transition-colors ${
       lesson.is_completed
@@ -50,7 +50,7 @@ export default function ModulePage() {
 
   const { data: module, isLoading, isError } = useQuery({
     queryKey: ['formation', 'module', moduleId],
-    queryFn: () => formationApi.getModule(Number(moduleId)),
+    queryFn: () => formationApi.getModule(moduleId!),
     enabled: !!moduleId,
   });
 

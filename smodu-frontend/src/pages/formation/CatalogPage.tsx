@@ -11,7 +11,7 @@ const LEVEL_COLORS: Record<string, string> = {
   PROJECT_READY: '#01696f',
 };
 
-function PathCard({ path, onEnroll }: { path: LearningPath; onEnroll: (id: number) => void }) {
+function PathCard({ path, onEnroll }: { path: LearningPath; onEnroll: (id: string) => void }) {
   const navigate = useNavigate();
   const firstModule = path.modules?.[0];
 
