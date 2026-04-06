@@ -1,0 +1,50 @@
+services:
+  db:
+    ports:
+      - "5432:5432" # accès direct depuis le host pour outils DB
+
+  redis:
+    ports:
+      - "6379:6379" # accès direct depuis le host
+
+  backend:
+    build:
+      target: development
+    command: python manage.py runserver 0.0.0.0:8000
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.development
+    volumes:
+      - ./smodu-backend:/app # hot reload Django
+      - media_files:/app/media
+    ports:
+      - "8000:8000"
+
+  celery_worker:
+    build:
+      target: development
+    command: celery -A config worker -l DEBUG -Q default,notifications --autoreload
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.development
+    volumes:
+      - ./smodu-backend:/app # hot reload Celery
+
+  celery_beat:
+    build:
+      target: development
+    command: celery -A config beat -l DEBUG --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.development
+    volumes:
+      - ./smodu-backend:/app
+
+  frontend:
+    build:
+      target: development
+    command: npm run dev -- --host 0.0.0.0
+    volumes:
+      - ./smodu-frontend:/app # hot reload Vite
+      - /app/node_modules # évite d'écraser node_modules du container
+    ports:
+      - "5173:5173"
+    environment:
+      VITE_API_BASE_URL: http://localhost:8000/api
