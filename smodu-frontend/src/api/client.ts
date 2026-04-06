@@ -94,4 +94,7 @@ export const authApi = {
   me: () => apiClient.get("/auth/me/"),
 };
 
+// Export as axiosInstance for consistency
+export const axiosInstance = apiClient;
+
 export default apiClient;

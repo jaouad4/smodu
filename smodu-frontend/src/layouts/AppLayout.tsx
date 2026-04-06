@@ -2,11 +2,10 @@ import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 
 const NAV_ITEMS = [
-  { label: "Dashboard", to: "/dashboard", icon: "⬛" },
-  // { label: "Onboarding", to: "/onboarding", icon: "🚀" },
-  // { label: "Formation", to: "/formation", icon: "📚" },
-  // { label: "Évaluations", to: "/evaluations", icon: "📝" },
-  // { label: "Compétences", to: "/competences", icon: "🎯" },
+  { label: "Dashboard", to: "/dashboard", icon: "📊", roles: ["ADMIN", "HR", "MANAGER", "TRAINER", "LEARNER", "ODOO_REF"] },
+  { label: "Onboarding", to: "/onboarding", icon: "🚀", roles: ["LEARNER"] },
+  { label: "Formation", to: "/formation", icon: "📚", roles: ["LEARNER", "TRAINER"] },
+  { label: "Compétences", to: "/competences", icon: "🎯", roles: ["LEARNER", "MANAGER", "HR"] },
 ];
 
 export default function AppLayout() {
@@ -29,7 +28,7 @@ export default function AppLayout() {
 
         {/* Navigation */}
         <nav className="flex-1 py-4 px-3 space-y-1 overflow-y-auto">
-          {NAV_ITEMS.map((item) => (
+          {NAV_ITEMS.filter(item => item.roles.includes(user?.role || "")).map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
